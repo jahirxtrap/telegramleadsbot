@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: telegramleadsbot
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      # Set BACKEND_URL to this service's public URL after the first deploy,
+      # then run `python scripts/set_webhook.py set` (or hit setWebhook) once.
+      - key: BACKEND_URL
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
+      - key: SHEETS_WEBAPP_URL
+        sync: false
+      - key: SHEETS_SHARED_SECRET
+        sync: false
+      - key: CEREBRAS_API_KEY
+        sync: false
+      - key: CEREBRAS_BASE_URL
+        value: https://api.cerebras.ai/v1
+      - key: CEREBRAS_MODEL
+        value: llama3.1-8b
+      - key: WEB_CONCURRENCY
+        value: "2"
