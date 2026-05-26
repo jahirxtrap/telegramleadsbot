@@ -1,13 +1,10 @@
-"""Cerebras inference client (OpenAI-compatible Chat Completions API).
-
-Docs: https://inference-docs.cerebras.ai — the endpoint mirrors OpenAI's
-`/v1/chat/completions`. We use raw httpx to avoid an extra SDK dependency.
-"""
+"""Cerebras inference client (OpenAI-compatible Chat Completions API)."""
 
 from __future__ import annotations
 
 import asyncio
 import json
+import re
 from typing import Any
 
 import httpx
@@ -16,8 +13,8 @@ from loguru import logger
 from core.config import CEREBRAS_API_KEY, CEREBRAS_BASE_URL, CEREBRAS_MODEL
 
 _TIMEOUT = httpx.Timeout(30.0)
-_MAX_RETRIES = 2          # extra attempts after the first
-_BACKOFF_SECONDS = 1.5    # multiplied by the attempt number
+_MAX_RETRIES = 2
+_BACKOFF_SECONDS = 1.5
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
 
 Message = dict[str, str]
@@ -25,7 +22,7 @@ Message = dict[str, str]
 
 async def _completion(payload: dict[str, Any]) -> dict[str, Any]:
     if not CEREBRAS_API_KEY:
-        logger.warning("CEREBRAS_API_KEY is empty — skipping Cerebras call")
+        logger.warning("CEREBRAS_API_KEY is empty, skipping Cerebras call")
         return {}
     headers = {
         "Authorization": f"Bearer {CEREBRAS_API_KEY}",
@@ -36,16 +33,27 @@ async def _completion(payload: dict[str, Any]) -> dict[str, Any]:
         for attempt in range(_MAX_RETRIES + 1):
             resp = await client.post(url, headers=headers, json=payload)
             if resp.status_code in _RETRY_STATUSES and attempt < _MAX_RETRIES:
-                wait = _BACKOFF_SECONDS * (attempt + 1)
-                logger.warning(
-                    "Cerebras {} (attempt {}/{}), retrying in {}s",
-                    resp.status_code, attempt + 1, _MAX_RETRIES, wait,
-                )
-                await asyncio.sleep(wait)
+                await asyncio.sleep(_BACKOFF_SECONDS * (attempt + 1))
                 continue
             resp.raise_for_status()
             return resp.json()
     return {}
+
+
+def _extract_json(content: str) -> dict[str, Any]:
+    if not content:
+        return {}
+    text = content.strip()
+    text = re.sub(r"^```(?:json)?", "", text).strip()
+    text = re.sub(r"```$", "", text).strip()
+    start, end = text.find("{"), text.rfind("}")
+    if start == -1 or end == -1 or end < start:
+        return {}
+    try:
+        parsed = json.loads(text[start : end + 1])
+        return parsed if isinstance(parsed, dict) else {}
+    except json.JSONDecodeError:
+        return {}
 
 
 async def chat(
@@ -54,7 +62,6 @@ async def chat(
     temperature: float = 0.4,
     max_tokens: int = 512,
 ) -> str:
-    """Return the assistant's reply text, or "" on failure."""
     try:
         data = await _completion(
             {
@@ -76,7 +83,6 @@ async def chat_json(
     temperature: float = 0.2,
     max_tokens: int = 512,
 ) -> dict[str, Any]:
-    """Request a JSON object response and parse it. Returns {} on failure."""
     try:
         data = await _completion(
             {
@@ -88,7 +94,7 @@ async def chat_json(
             }
         )
         content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-        return json.loads(content) if content else {}
-    except (httpx.HTTPError, KeyError, IndexError, json.JSONDecodeError) as exc:
+        return _extract_json(content)
+    except (httpx.HTTPError, KeyError, IndexError) as exc:
         logger.error("Cerebras chat_json failed: {}", exc)
         return {}

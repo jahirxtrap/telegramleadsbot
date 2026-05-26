@@ -1,9 +1,4 @@
-"""Telegram webhook receiver.
-
-Telegram POSTs each update here. We verify the secret header, ack with 200
-immediately, and process the message in the background so Telegram never
-times out and retries.
-"""
+"""Telegram webhook receiver."""
 
 from __future__ import annotations
 
@@ -31,14 +26,12 @@ async def telegram_webhook(
     background: BackgroundTasks,
     x_telegram_bot_api_secret_token: str | None = Header(default=None),
 ):
-    # Constant-ish check: reject anyone who doesn't echo our secret token.
     if x_telegram_bot_api_secret_token != TELEGRAM_WEBHOOK_SECRET:
         return api_response(status=403)
 
     try:
         update = TelegramUpdate.model_validate(await request.json())
     except (ValidationError, ValueError) as exc:
-        # Ack with 200 anyway so Telegram doesn't retry a malformed update.
         logger.warning("Discarding unparseable update: {}", exc)
         return api_response()
 

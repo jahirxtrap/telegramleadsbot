@@ -8,7 +8,6 @@ from fastapi.responses import JSONResponse
 
 
 def _default_message_for(status: int) -> str:
-    """HTTP reason phrase for a status code, with a safe fallback."""
     try:
         return HTTPStatus(status).phrase
     except ValueError:
@@ -21,16 +20,7 @@ def api_response(
     status: int = 200,
     success: Optional[bool] = None,
 ) -> JSONResponse:
-    """Return a standardized JSON response.
-
-    Envelope shape:
-        {
-            "success": bool,    # explicit value or derived from status (2xx -> true)
-            "status":  int,     # HTTP status code
-            "message": str,     # human-readable message
-            "data":    any      # payload (omitted when None)
-        }
-    """
+    """Standardized envelope: {success, status, message, data}. data omitted when None."""
     resolved_success = success if success is not None else (200 <= status < 300)
     resolved_message = message if message is not None else _default_message_for(status)
     body: dict[str, Any] = {

@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
-"""
-Register / inspect / remove the Telegram webhook.
+"""Register / inspect / remove the Telegram webhook.
 
-Run from the project root so the package imports resolve:
-
-    python scripts/set_webhook.py set      # point Telegram at BACKEND_URL/api/telegram/webhook
-    python scripts/set_webhook.py info      # print current webhook info
-    python scripts/set_webhook.py delete    # remove the webhook (back to long polling)
-
-Reads BACKEND_URL, TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET from the
-environment / .env via core.config.
+Run from the project root:
+    python scripts/set_webhook.py set
+    python scripts/set_webhook.py info
+    python scripts/set_webhook.py delete
 """
 
 import asyncio

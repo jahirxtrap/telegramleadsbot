@@ -1,8 +1,4 @@
-"""Telegram Bot API client.
-
-Thin async wrapper over https://api.telegram.org/bot<token>/<method>.
-Only the methods the bot needs are implemented.
-"""
+"""Telegram Bot API client."""
 
 from __future__ import annotations
 
@@ -18,9 +14,8 @@ _TIMEOUT = httpx.Timeout(15.0)
 
 
 async def _call(method: str, payload: dict[str, Any]) -> dict[str, Any]:
-    """POST a Bot API method and return the parsed `result`, or {} on failure."""
     if not TELEGRAM_BOT_TOKEN:
-        logger.warning("TELEGRAM_BOT_TOKEN is empty — skipping Telegram call %s", method)
+        logger.warning("TELEGRAM_BOT_TOKEN is empty, skipping Telegram call {}", method)
         return {}
     async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
         resp = await client.post(f"{_API_BASE}/{method}", json=payload)

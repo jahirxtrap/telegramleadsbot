@@ -89,7 +89,7 @@ for local dev. On Render the vars are injected by the platform, so `.env` is abs
 | `SHEETS_SHARED_SECRET` | random hex | Must match the Apps Script `SHARED_SECRET` property |
 | `CEREBRAS_API_KEY` | `csk-...` | From https://cloud.cerebras.ai |
 | `CEREBRAS_BASE_URL` | `https://api.cerebras.ai/v1` | OpenAI-compatible base |
-| `CEREBRAS_MODEL` | `llama3.1-8b` | Must be a model id available on your account (GET /v1/models). Lighter models 429 far less on the free tier. |
+| `CEREBRAS_MODEL` | `llama3.1-8b` | Must be a model id available on your account (GET /v1/models). Used for EXTRACTION only; ICP decision is deterministic in code. Reliable + fast on free tier. |
 
 ## Local Development
 

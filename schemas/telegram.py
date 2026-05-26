@@ -1,8 +1,4 @@
-"""Pydantic models for the subset of the Telegram Bot API we consume.
-
-We only model the fields the bot reads. `extra="ignore"` lets Telegram add
-fields without breaking validation.
-"""
+"""Pydantic models for the subset of the Telegram Bot API the bot consumes."""
 
 from __future__ import annotations
 

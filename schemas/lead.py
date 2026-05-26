@@ -1,27 +1,17 @@
-"""Lead payload sent to Google Sheets."""
+"""Lead qualification record. Field order mirrors the Google Sheet columns."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-class Lead(BaseModel):
-    """A single captured lead. Maps 1:1 to a row in the spreadsheet."""
-
-    telegram_user_id: int
-    chat_id: int
-    username: str | None = None
-    full_name: str | None = None
-    phone: str | None = None
-    message: str | None = None
-    # AI-derived fields
-    intent: str | None = None
-    qualified: bool | None = None
-    summary: str | None = None
-    captured_at: str = Field(default_factory=_now_iso)
+class LeadRecord(BaseModel):
+    date: str
+    telegram_user: str | None = None
+    received_text: str
+    sector: str | None = None
+    employees: int | None = None
+    location: str | None = None
+    ai_interest: bool | None = None
+    decision: str
+    reason: str | None = None

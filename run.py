@@ -1,10 +1,4 @@
-"""
-Uvicorn server launcher.
-
-Usage:
-    python run.py                 # Development (reload=True, workers=1)
-    python run.py --production    # Production (reload=False, workers=4)
-"""
+"""Uvicorn server launcher. Use --production for no-reload multi-worker mode."""
 
 import os
 import sys
@@ -14,7 +8,7 @@ import uvicorn
 
 def main():
     is_production = "--production" in sys.argv
-    port = int(os.environ.get("PORT", "8000"))  # Render injects $PORT
+    port = int(os.environ.get("PORT", "8000"))
     workers = int(os.environ.get("WEB_CONCURRENCY", "2")) if is_production else 1
 
     uvicorn.run(

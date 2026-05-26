@@ -1,30 +1,20 @@
 /**
- * Google Apps Script web app — receives leads from the bot and appends a row.
- *
- * Setup:
- *   1. Create a Google Sheet, then Extensions > Apps Script and paste this file.
- *   2. Project Settings > Script properties: add SHARED_SECRET = <same value as
- *      SHEETS_SHARED_SECRET in the bot's env>.
- *   3. Deploy > New deployment > Web app:
- *        - Execute as: Me
- *        - Who has access: Anyone
- *      Copy the /exec URL into the bot's SHEETS_WEBAPP_URL env var.
- *
- * The bot POSTs: { "secret": "...", "lead": { ...Lead fields... } }
+ * Apps Script web app: appends a lead row sent by the bot.
+ * Setup: add Script Property SHARED_SECRET (= SHEETS_SHARED_SECRET), deploy as
+ * Web app (Execute as: Me, Access: Anyone), put the /exec URL in SHEETS_WEBAPP_URL.
  */
 
-// Column order — must mirror the Lead model in schemas/lead.py.
+// Must mirror the LeadRecord fields in schemas/lead.py.
 var COLUMNS = [
-  'captured_at',
-  'telegram_user_id',
-  'chat_id',
-  'username',
-  'full_name',
-  'phone',
-  'message',
-  'intent',
-  'qualified',
-  'summary'
+  'date',
+  'telegram_user',
+  'received_text',
+  'sector',
+  'employees',
+  'location',
+  'ai_interest',
+  'decision',
+  'reason'
 ];
 
 function doPost(e) {

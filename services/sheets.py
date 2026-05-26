@@ -1,8 +1,4 @@
-"""Google Sheets integration via a deployed Apps Script web app.
-
-The Apps Script `doPost(e)` receives the JSON below, checks `secret`, and
-appends a row. See apps_script/Code.gs for the matching script.
-"""
+"""Google Sheets integration via a deployed Apps Script web app."""
 
 from __future__ import annotations
 
@@ -12,20 +8,17 @@ import httpx
 from loguru import logger
 
 from core.config import SHEETS_SHARED_SECRET, SHEETS_WEBAPP_URL
-from schemas.lead import Lead
+from schemas.lead import LeadRecord
 
-# Apps Script web apps answer with a 302 redirect to googleusercontent before
-# returning the body, so we must follow redirects.
 _TIMEOUT = httpx.Timeout(20.0)
-_MAX_RETRIES = 2          # Apps Script 5xx errors are flaky/transient under concurrency
+_MAX_RETRIES = 2
 _BACKOFF_SECONDS = 1.5
-_RETRY_STATUSES = {500, 502, 503, 504, 429}
+_RETRY_STATUSES = {429, 500, 502, 503, 504}
 
 
-async def append_lead(lead: Lead) -> bool:
-    """Append a lead as a new row. Returns True on success."""
+async def append_lead(lead: LeadRecord) -> bool:
     if not SHEETS_WEBAPP_URL:
-        logger.warning("SHEETS_WEBAPP_URL is empty — skipping Sheets append")
+        logger.warning("SHEETS_WEBAPP_URL is empty, skipping Sheets append")
         return False
 
     body = {"secret": SHEETS_SHARED_SECRET, "lead": lead.model_dump()}
@@ -34,12 +27,7 @@ async def append_lead(lead: Lead) -> bool:
             for attempt in range(_MAX_RETRIES + 1):
                 resp = await client.post(SHEETS_WEBAPP_URL, json=body)
                 if resp.status_code in _RETRY_STATUSES and attempt < _MAX_RETRIES:
-                    wait = _BACKOFF_SECONDS * (attempt + 1)
-                    logger.warning(
-                        "Sheets {} (attempt {}/{}), retrying in {}s",
-                        resp.status_code, attempt + 1, _MAX_RETRIES, wait,
-                    )
-                    await asyncio.sleep(wait)
+                    await asyncio.sleep(_BACKOFF_SECONDS * (attempt + 1))
                     continue
                 break
         resp.raise_for_status()

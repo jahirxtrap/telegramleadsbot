@@ -5,7 +5,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from core.responses import api_response
 
-MAX_BODY_SIZE = 25 * 1_048_576  # 25 MB
+MAX_BODY_SIZE = 25 * 1_048_576
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -27,7 +27,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         content_length = request.headers.get("content-length")
         if content_length and int(content_length) > MAX_BODY_SIZE:
-            return api_response(status=413)  # default phrase: "Request Entity Too Large"
+            return api_response(status=413)
         return await call_next(request)
 
 
