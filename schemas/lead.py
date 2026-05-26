@@ -9,6 +9,7 @@ class LeadRecord(BaseModel):
     date: str
     telegram_user: str | None = None
     received_text: str
+    language: str | None = None
     sector: str | None = None
     employees: int | None = None
     location: str | None = None

@@ -2,6 +2,9 @@
 
 ICP (all four required): services/consulting company, >=5 employees,
 located in Spain or Latin America, interested in automation or AI.
+
+The decision is deterministic (code). The LLM also writes the conversational
+reply in the user's language; on failure we fall back to a code template.
 """
 
 from __future__ import annotations
@@ -36,13 +39,32 @@ _EXTRACT_PROMPT = (
     '"employees" (integer or null),\n'
     '"country" (full country name in English; INFER from city if needed, e.g. Madrid->Spain, '
     "Bogota->Colombia; null if unknown),\n"
-    '"wants_automation_or_ai" (bool).\n'
+    '"wants_automation_or_ai" (bool),\n'
+    '"language" (ISO 639-1 code of the message language, e.g. es, en, pt).\n'
     "Use ASCII only, no accents."
 )
 
+_GREETING_RULES = (
+    "You are a B2B lead-qualification assistant. The user has not provided business data. "
+    "Greet them in 1-2 sentences and ask for the company sector, number of employees, location, "
+    "and what they need. Professional, no emojis. {lang}"
+)
+
+_REPLY_RULES = (
+    "You are a B2B lead-qualification assistant. Reply in 2-3 sentences, professional and concise, "
+    "no emojis. The qualification decision has already been made: state it clearly at the start and "
+    "explain it using the criteria below. Do not change it. {lang}"
+)
+
+
+def _lang_directive(lang: str | None) -> str:
+    if lang:
+        return f"Reply ONLY in this language (ISO 639-1): {lang}."
+    return "Reply in the SAME language as the user's message."
+
 _WELCOME = (
-    "Hola 👋 Soy un bot de cualificación de leads.\n"
-    "Mandame los datos del lead en texto libre: sector, nº de empleados, ubicación y qué necesitan.\n\n"
+    "Hola, soy un bot de cualificación de leads. Mandame los datos del lead en texto libre: "
+    "sector, nº de empleados, ubicación y qué necesitan.\n\n"
     'Ej: "Consultoría, 15 empleados, Madrid, quieren automatizar su proceso de ventas."'
 )
 
@@ -99,7 +121,7 @@ def _build_reason(
     return "No cualifica porque " + "; ".join(fails) + "."
 
 
-def _format_reply(
+def _fallback_reply(
     sector: str | None, sector_ok: bool,
     employees: int | None, employees_ok: bool,
     country: str | None, location_ok: bool,
@@ -120,6 +142,42 @@ def _format_reply(
             "",
             reason,
         ]
+    )
+
+
+async def _greeting_reply(text: str, lang: str | None) -> str:
+    return await cerebras.chat(
+        [
+            {"role": "system", "content": _GREETING_RULES.format(lang=_lang_directive(lang))},
+            {"role": "user", "content": text},
+        ],
+        temperature=0.7,
+    )
+
+
+async def _natural_reply(
+    text: str, decision_label: str,
+    sector: str | None, sector_ok: bool,
+    employees: int | None, employees_ok: bool,
+    country: str | None, location_ok: bool,
+    ai_ok: bool, lang: str | None,
+) -> str:
+    def state(ok: bool) -> str:
+        return "met" if ok else "not met"
+
+    context = (
+        f"{_REPLY_RULES.format(lang=_lang_directive(lang))}\n\n"
+        f"Decision: {decision_label}.\n"
+        "ICP criteria (all four required to qualify):\n"
+        f"- services or consulting: {state(sector_ok)} (sector: {sector or 'unknown'})\n"
+        f"- at least 5 employees: {state(employees_ok)} (employees: "
+        f"{employees if employees is not None else 'unknown'})\n"
+        f"- located in Spain or Latin America: {state(location_ok)} (location: {country or 'unknown'})\n"
+        f"- interested in automation or AI: {state(ai_ok)}"
+    )
+    return await cerebras.chat(
+        [{"role": "system", "content": context}, {"role": "user", "content": text}],
+        temperature=0.6,
     )
 
 
@@ -144,8 +202,9 @@ async def handle_message(message: TelegramMessage) -> str | None:
     if not facts:
         return "No pude procesar el mensaje ahora mismo. ¿Podés reenviar los datos del lead?"
 
+    lang = facts.get("language")
     if not facts.get("is_lead"):
-        return _WELCOME
+        return await _greeting_reply(text, lang) or _WELCOME
 
     sector = facts.get("sector")
     employees = _as_int(facts.get("employees"))
@@ -167,6 +226,7 @@ async def handle_message(message: TelegramMessage) -> str | None:
         date=_now(),
         telegram_user=_telegram_user(message),
         received_text=text,
+        language=lang,
         sector=sector,
         employees=employees,
         location=country,
@@ -178,6 +238,10 @@ async def handle_message(message: TelegramMessage) -> str | None:
     if not await sheets.append_lead(record):
         logger.warning("Lead from {} not stored in Sheets", user.id)
 
-    return _format_reply(
+    reply = await _natural_reply(
+        text, "QUALIFIED" if qualified else "NOT QUALIFIED",
+        sector, sector_ok, employees, employees_ok, country, location_ok, ai_ok, lang,
+    )
+    return reply or _fallback_reply(
         sector, sector_ok, employees, employees_ok, country, location_ok, ai_ok, qualified, reason
     )

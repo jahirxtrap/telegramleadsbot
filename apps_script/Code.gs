@@ -10,6 +10,7 @@ var COLUMNS = [
   'date',
   'telegram_user',
   'received_text',
+  'language',
   'sector',
   'employees',
   'location',
@@ -18,8 +19,8 @@ var COLUMNS = [
   'reason'
 ];
 
-var AI_INTEREST_COL = 7;
-var DECISION_COL = 8;
+var AI_INTEREST_COL = 8;
+var DECISION_COL = 9;
 
 function doPost(e) {
   try {
@@ -78,7 +79,7 @@ function _setupHeader(sheet) {
 
   sheet.getRange(2, 1, sheet.getMaxRows() - 1, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
 
-  var widths = [150, 140, 320, 130, 90, 120, 90, 120, 360];
+  var widths = [150, 140, 320, 80, 130, 90, 120, 90, 120, 360];
   for (var i = 0; i < widths.length; i++) {
     sheet.setColumnWidth(i + 1, widths[i]);
   }
